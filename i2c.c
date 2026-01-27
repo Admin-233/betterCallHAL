@@ -7,6 +7,8 @@ so actually the real available space of TXbuffer to storage message to send is T
 
 This hal 可以让你以一次I2C事务作为单位处理数据传输.
 
+Call I2Cbegin before everything.
+
 When using the master mode, please follow the specified logic.
 first calling I2CsetupTransmission
 then I2Cwrite or I2Crequest
@@ -19,6 +21,11 @@ When using the slave mode, please define onReceiveCallback and onRequestCallback
 using I2ConReceive() and I2ConRequest()
 It's basically the the same as Arduino Wire, 
 except for the two callbacks are both not taking any parameters or having any returns.
+
+Due to the large storage space consumed by buffer re-allocate feature(nearly 2.5k bytes),
+and the unstablity it has,
+I2CsetBuffer and related variables has been disabled.
+Please allocate fixed buffer manually.
 */
 
 #include "stc8g.h"
@@ -29,10 +36,18 @@ static unsigned char I2Ctimeout = 1;
 
 static unsigned char I2CerrorStatus = OK;//OK -- 0, NACK -- 1, TIMEOUT -- 2
 
-static char TXbuffer[32];
-static char RXbuffer[32];
+/*//function disabled
+static __xdata char* TXbuffer = NULL;
+static __xdata char* RXbuffer = NULL;
 static unsigned char TXbufferLength = 32;
 static unsigned char RXbufferLength = 32;
+*/
+
+#define TXbufferLength 32
+#define RXbufferLength 32
+static char TXbuffer[TXbufferLength];
+static char RXbuffer[RXbufferLength];
+
 static unsigned char TXbufferPosition = 0;
 static unsigned char RXbufferPosition = 0;
 
@@ -51,15 +66,28 @@ void I2Cconfig(unsigned char speed, unsigned char timeout)
 	I2Ctimeout = timeout;
 }
 
-void I2CsetBuffer(unsigned char TXsize, unsigned char RXsize)//todo
+/*//function disabled
+void I2CsetBuffer(unsigned char TXsize, unsigned char RXsize)
 {
 	TXbufferLength = TXsize;
 	RXbufferLength = RXsize;
 	
+	RXbuffer = (__xdata char *)realloc(RXbuffer, RXbufferLength * sizeof(char));
+	TXbuffer = (__xdata char *)realloc(RXbuffer, TXbufferLength * sizeof(char));	
 }
+*/
 
 void I2Cbegin(signed char address)//正数作为从机，负数作为主机
 {
+	
+	/*//function disabled
+	if(RXbuffer == NULL || TXbuffer == NULL)
+	{
+		RXbuffer = (__xdata char *)calloc(RXbufferLength, sizeof(char));
+		TXbuffer = (__xdata char *)calloc(RXbufferLength, sizeof(char));
+	}
+	*/
+	
 	P1M0 |= 0x30;//设置引脚为开漏模式
 	P1M1 |= 0x30;
 	

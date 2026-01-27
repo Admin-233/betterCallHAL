@@ -1,3 +1,5 @@
+//#include <stdlib.h>
+
 #define NULL 0
 
 typedef enum
@@ -14,6 +16,8 @@ typedef enum
 	TIMEOUT = 2,
 } ERRORstatus;
 
+void I2Cconfig(unsigned char speed, unsigned char timeout);
+//void I2CsetBuffer(unsigned char TXsize, unsigned char RXsize);
 void I2Cbegin(signed char addr);
 void I2CsetupTransmission(unsigned char addr, RWswitch choice);
 void I2Crequest(unsigned char quantity);
