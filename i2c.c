@@ -16,6 +16,7 @@ finally I2CstartTransmission
 If two transmission needs to be stick together, then call I2CstartTransmission(false), and setup another Transmission
 I2CstartTransmission will return the status of I2C transmission.
 Also error handling only availble in master mode.
+If the slave doesn't respond(nack), then the transmission will be stopped.
 
 When using the slave mode, please define onReceiveCallback and onRequestCallback
 using I2ConReceive() and I2ConRequest()
@@ -25,7 +26,8 @@ except for the two callbacks are both not taking any parameters or having any re
 Due to the large storage space consumed by buffer re-allocate feature(nearly 2.5k bytes),
 and the unstablity it has,
 I2CsetBuffer and related variables has been disabled.
-Please allocate fixed buffer manually.
+Please allocate fixed buffer manually,
+by defining TXbufferLength and RXbufferLength.
 */
 
 #include "stc8g.h"
@@ -43,8 +45,12 @@ static unsigned char TXbufferLength = 32;
 static unsigned char RXbufferLength = 32;
 */
 
+#ifndef TXbufferLength
 #define TXbufferLength 32
+#endif
+#ifndef RXbufferLength
 #define RXbufferLength 32
+#endif
 static char TXbuffer[TXbufferLength];
 static char RXbuffer[RXbufferLength];
 
