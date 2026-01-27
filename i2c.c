@@ -51,7 +51,12 @@ void I2Cconfig(unsigned char speed, unsigned char timeout)
 	I2Ctimeout = timeout;
 }
 
-//void I2CsetBuffer(unsigned char TXsize, unsigned char RXsize)//todo
+void I2CsetBuffer(unsigned char TXsize, unsigned char RXsize)//todo
+{
+	TXbufferLength = TXsize;
+	RXbufferLength = RXsize;
+	
+}
 
 void I2Cbegin(signed char address)//正数作为从机，负数作为主机
 {
@@ -104,7 +109,7 @@ static void __waitForCompletion(void)
 	I2CMSST &= 0b10111111;//clear MSIF
 }
 
-void I2CsetupTransmission(unsigned char addr, RWswitch choice)
+void I2CsetupTransmission(unsigned char addr, RWswitch choice)//todo: buffer init
 {
 	RWstatus = choice;
 	
@@ -166,6 +171,8 @@ unsigned char I2Cavailable(void)
 
 unsigned char I2CstartTransmission(unsigned char sendStop)//todo: if not stop transmission
 {
+	I2CMSST = 0;//clear flags
+	
 	I2CMSCR = 0b00000001;//start
 	__waitForCompletion();
 	
@@ -214,6 +221,7 @@ unsigned char I2CstartTransmission(unsigned char sendStop)//todo: if not stop tr
 	if(sendStop != 0)
 	{
 		I2CMSCR = 0b00000110;
+		__waitForCompletion();
 	}
 	RWstatus = UNKNOWN;
 	
@@ -232,11 +240,27 @@ void I2ConRequest(void (*userCallback)(void))
 
 void I2Cisr(void) __interrupt(24)//mainly the logic of slave mode
 {
-	__bit static isFirstByte;
+	__bit static isFirstByte = 1;//default value
+	__bit static isRestart = 0;  //default value
 	
 	if(I2CSLST & 0b01000000)//start
 	{
 		I2CSLST &= 0b10111111;
+		
+		if(isRestart == 1)//regard restart as a stop
+		{
+			RXbufferAvailable = RXbufferPosition;
+			if(RXbufferPosition > 0)//if actually read somethng
+			{
+				RXbufferPosition -= 1;//locate it to the last byte
+			}
+			
+			if(onReceiveCallback != NULL)
+			{
+				onReceiveCallback();
+			}
+		}
+		isRestart = 1;
 		
 		isFirstByte = 1;
 		TXbufferPosition = 0;
@@ -255,7 +279,6 @@ void I2Cisr(void) __interrupt(24)//mainly the logic of slave mode
 			RWstatus = I2CRXD & 0b00000001;
 			if(RWstatus == READ)//if master requested, prep data to send.
 			{
-				//P10 = !P10;//debug
 				if(onRequestCallback != NULL)
 				{
 					onRequestCallback();
@@ -294,6 +317,8 @@ void I2Cisr(void) __interrupt(24)//mainly the logic of slave mode
 	else if(I2CSLST & 0b00001000)//stop
 	{
 		I2CSLST &= 0b11110111;
+		
+		isRestart = 0;
 		
 		RXbufferAvailable = RXbufferPosition;
 		if(RXbufferPosition > 0)//if actually read somethng

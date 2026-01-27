@@ -16,6 +16,7 @@ typedef enum
 
 void I2Cbegin(signed char addr);
 void I2CsetupTransmission(unsigned char addr, RWswitch choice);
+void I2Crequest(unsigned char quantity);
 void I2Cwrite(unsigned char data);
 unsigned char I2Cread(void);
 unsigned char I2CstartTransmission(unsigned char sendStop);
