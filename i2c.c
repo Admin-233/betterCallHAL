@@ -17,6 +17,7 @@ If two transmission needs to be stick together, then call I2CstartTransmission(f
 I2CstartTransmission will return the status of I2C transmission.
 Also error handling only availble in master mode.
 If the slave doesn't respond(nack), then the transmission will be stopped.
+Defind NOTSLAVE to save space if only master mode is used.
 
 When using the slave mode, please define onReceiveCallback and onRequestCallback
 using I2ConReceive() and I2ConRequest()
@@ -30,7 +31,7 @@ Please allocate fixed buffer manually,
 by defining TXbufferLength and RXbufferLength.
 */
 
-#include "stc8g.h"
+#include "stc_header_userdefine.h"
 #include "i2c.h"
 
 static unsigned char I2Cspeed = 26;
@@ -118,7 +119,7 @@ void I2Cbegin(signed char address)//正数作为从机，负数作为主机
 		
 		I2CSLST = 0;//清除状态
 		
-		I2CSLADR = (address << 1) | 0x01;//设置地址，匹配地址
+		I2CSLADR = (address << 1);// | 0x00;//设置地址，匹配地址
 		
 		EA = 1;//开启总中断
 		
@@ -214,7 +215,6 @@ unsigned char I2CstartTransmission(unsigned char sendStop)//todo: if not stop tr
 	{
 		for(unsigned char i = 0; i <= TXbufferPosition; i++)
 		{
-			//P10 = !P10;//debug
 			I2CTXD = TXbuffer[i];
 			I2CMSCR = 0b00001010;//send + recvack
 			__waitForCompletion();
@@ -271,6 +271,8 @@ void I2ConRequest(void (*userCallback)(void))
 {
 	onRequestCallback = userCallback;
 }
+
+#ifndef NOTSLAVE
 
 void I2Cisr(void) __interrupt(24)//mainly the logic of slave mode
 {
@@ -333,7 +335,6 @@ void I2Cisr(void) __interrupt(24)//mainly the logic of slave mode
 	
 	else if(I2CSLST & 0b00010000)//sendByte
 	{
-		//P10 = !P10;//debug
 		I2CSLST &= 0b11101111;
 
 		if(TXbufferPosition + 1 < TXbufferLength)
@@ -359,10 +360,11 @@ void I2Cisr(void) __interrupt(24)//mainly the logic of slave mode
 		{
 			RXbufferPosition -= 1;//locate it to the last byte
 		}
-		//P10 = !P10;//debug
 		if(onReceiveCallback != NULL)
 		{
 			onReceiveCallback();
 		}
 	}
 }
+
+#endif
